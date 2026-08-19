@@ -29,5 +29,7 @@ class TrainingRun(Base):
     mlflow_run_id = Column(String, nullable=True)
     status = Column(String, default="pending")  # pending | running | completed | failed
     best_model_name = Column(String, nullable=True)
+    best_model_uri = Column(String, nullable=True)
+    feature_columns = Column(JSON, nullable=True)
     metrics = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)

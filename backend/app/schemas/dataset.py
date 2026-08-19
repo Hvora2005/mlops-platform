@@ -24,7 +24,17 @@ class TrainingRunOut(BaseModel):
     id: UUID
     status: str
     best_model_name: str | None
+    feature_columns: list[str] | None
     metrics: dict | None
 
     class Config:
         from_attributes = True
+
+
+class PredictRequest(BaseModel):
+    training_run_id: UUID
+    records: list[dict]
+
+
+class PredictResponse(BaseModel):
+    predictions: list

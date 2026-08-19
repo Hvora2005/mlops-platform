@@ -9,7 +9,7 @@ from app.core.config import settings
 from app.core.db import get_db
 from app.ml.pipelines.training import train_and_compare
 from app.models.dataset import Dataset, TrainingRun
-from app.schemas.dataset import TrainingRunOut, TrainRequest
+from app.schemas.dataset import PredictRequest, PredictResponse, TrainingRunOut, TrainRequest
 
 router = APIRouter(prefix="/training", tags=["training"])
 
@@ -35,15 +35,21 @@ def run_training(req: TrainRequest, db: Session = Depends(get_db)):
         outcome = train_and_compare(df, req.target_column, req.task_type)
 
         all_metrics = {}
+        best_model_uri = None
         for name, res in outcome["results"].items():
-            with mlflow.start_run(run_name=name):
-                mlflow.log_params({"model": name, "task_type": req.task_type})
+            with mlflow.start_run(run_name=name) as mlflow_run:
+                mlflow.log_params({"model": name, "task_type": req.task_type, **res["best_params"]})
                 mlflow.log_metrics(res["metrics"])
                 mlflow.sklearn.log_model(res["pipeline"], artifact_path="model")
+                if name == outcome["best_model"]:
+                    best_model_uri = f"runs:/{mlflow_run.info.run_id}/model"
+                    run.mlflow_run_id = mlflow_run.info.run_id
             all_metrics[name] = res["metrics"]
 
         run.status = "completed"
         run.best_model_name = outcome["best_model"]
+        run.best_model_uri = best_model_uri
+        run.feature_columns = outcome["feature_columns"]
         run.metrics = all_metrics
 
         dataset.target_column = req.target_column
@@ -64,3 +70,20 @@ def get_training_run(run_id: uuid.UUID, db: Session = Depends(get_db)):
     if not run:
         raise HTTPException(404, "Training run not found")
     return run
+
+
+@router.post("/predict", response_model=PredictResponse)
+def predict(req: PredictRequest, db: Session = Depends(get_db)):
+    run = db.query(TrainingRun).filter(TrainingRun.id == req.training_run_id).first()
+    if not run or run.status != "completed":
+        raise HTTPException(404, "Completed training run not found")
+
+    model = mlflow.sklearn.load_model(run.best_model_uri)
+    input_df = pd.DataFrame(req.records)
+
+    missing = set(run.feature_columns) - set(input_df.columns)
+    if missing:
+        raise HTTPException(400, f"Missing feature columns: {sorted(missing)}")
+
+    predictions = model.predict(input_df[run.feature_columns])
+    return {"predictions": predictions.tolist()}
