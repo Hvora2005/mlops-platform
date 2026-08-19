@@ -9,3 +9,6 @@ mlruns/*
 !mlruns/.gitkeep
 .streamlit/
 *.egg-info/
+*.log
+*.db
+backend/mlruns_local/
