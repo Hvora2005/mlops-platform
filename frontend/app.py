@@ -136,7 +136,9 @@ with st.sidebar:
         st.write(f"🏆 **{run['best_model_name']}**")
 
     st.markdown("---")
-    st.caption(f"API: `{API_URL}`")
+    with st.expander("⚙️ Settings"):
+        st.caption("Backend connection")
+        st.code(API_URL, language=None)
 
 tab_upload, tab_train, tab_results, tab_predict = st.tabs(
     ["📁 Upload", "⚙️ Train", "📊 Results", "🔮 Predict"]
