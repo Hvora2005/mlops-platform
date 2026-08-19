@@ -1,0 +1,55 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: mlops
+      POSTGRES_PASSWORD: mlops
+      POSTGRES_DB: mlops
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  mlflow:
+    image: python:3.11-slim
+    command: >
+      bash -c "pip install --no-cache-dir mlflow==2.16.2 psycopg2-binary &&
+      mlflow server --host 0.0.0.0 --port 5000
+      --backend-store-uri postgresql://mlops:mlops@db:5432/mlops
+      --default-artifact-root /mlruns"
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlruns:/mlruns
+    depends_on:
+      - db
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    environment:
+      DATABASE_URL: postgresql://mlops:mlops@db:5432/mlops
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      UPLOAD_DIR: /app/data/uploads
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data/uploads:/app/data/uploads
+    depends_on:
+      - db
+      - mlflow
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    environment:
+      API_URL: http://api:8000
+    ports:
+      - "8501:8501"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:

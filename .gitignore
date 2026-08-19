@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+data/uploads/*
+!data/uploads/.gitkeep
+mlruns/*
+!mlruns/.gitkeep
+.streamlit/
+*.egg-info/
