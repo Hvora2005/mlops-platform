@@ -1,3 +1,4 @@
+from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -9,6 +10,21 @@ class DatasetOut(BaseModel):
     n_rows: int
     n_cols: int
     column_summary: dict
+
+    class Config:
+        from_attributes = True
+
+
+class DatasetPreview(BaseModel):
+    columns: list[str]
+    rows: list[dict]
+
+
+class TrainingRunSummary(BaseModel):
+    id: UUID
+    status: str
+    best_model_name: str | None
+    created_at: datetime
 
     class Config:
         from_attributes = True

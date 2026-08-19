@@ -9,7 +9,13 @@ from app.core.config import settings
 from app.core.db import get_db
 from app.ml.pipelines.training import train_and_compare
 from app.models.dataset import Dataset, TrainingRun
-from app.schemas.dataset import PredictRequest, PredictResponse, TrainingRunOut, TrainRequest
+from app.schemas.dataset import (
+    PredictRequest,
+    PredictResponse,
+    TrainingRunOut,
+    TrainingRunSummary,
+    TrainRequest,
+)
 
 router = APIRouter(prefix="/training", tags=["training"])
 
@@ -62,6 +68,14 @@ def run_training(req: TrainRequest, db: Session = Depends(get_db)):
         run.status = "failed"
         db.commit()
         raise HTTPException(500, str(e))
+
+
+@router.get("/runs", response_model=list[TrainingRunSummary])
+def list_training_runs(dataset_id: uuid.UUID | None = None, limit: int = 10, db: Session = Depends(get_db)):
+    query = db.query(TrainingRun)
+    if dataset_id is not None:
+        query = query.filter(TrainingRun.dataset_id == dataset_id)
+    return query.order_by(TrainingRun.created_at.desc()).limit(limit).all()
 
 
 @router.get("/{run_id}", response_model=TrainingRunOut)
