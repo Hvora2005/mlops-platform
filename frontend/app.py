@@ -658,12 +658,17 @@ with tab_predict:
                     inputs[col] = st.text_input(col, key=f"predict_{col}")
 
             if st.button("Predict"):
-                resp = requests.post(
-                    f"{API_URL}/training/predict",
-                    json={"training_run_id": run["id"], "records": [inputs]},
-                    headers={"x-api-key": API_KEY},
-                )
-                if resp.ok:
+                blank_fields = [col for col, val in inputs.items() if val.strip() == ""]
+                if blank_fields:
+                    st.warning(f"Fill in all fields before predicting. Missing: {', '.join(blank_fields)}")
+                    resp = None
+                else:
+                    resp = requests.post(
+                        f"{API_URL}/training/predict",
+                        json={"training_run_id": run["id"], "records": [inputs]},
+                        headers={"x-api-key": API_KEY},
+                    )
+                if resp is not None and resp.ok:
                     prediction = resp.json()["predictions"][0]
                     st.toast("Prediction ready")
                     st.markdown(
@@ -678,7 +683,7 @@ with tab_predict:
                         """,
                         unsafe_allow_html=True,
                     )
-                else:
+                elif resp is not None:
                     st.error(resp.text)
             st.markdown("</div>", unsafe_allow_html=True)
         else:

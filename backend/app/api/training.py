@@ -131,5 +131,8 @@ def predict(req: PredictRequest, db: Session = Depends(get_db)):
     if missing:
         raise HTTPException(400, f"Missing feature columns: {sorted(missing)}")
 
-    predictions = model.predict(input_df[run.feature_columns])
+    try:
+        predictions = model.predict(input_df[run.feature_columns])
+    except (ValueError, TypeError) as e:
+        raise HTTPException(400, f"Invalid input data: {e}")
     return {"predictions": predictions.tolist()}
