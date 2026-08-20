@@ -399,6 +399,7 @@ with tab_upload:
             if resp.ok:
                 st.session_state["dataset"] = resp.json()
                 st.session_state.pop("run", None)
+                st.session_state.pop("active_run_id", None)
                 st.toast(f"Uploaded {resp.json()['filename']}")
                 st.rerun()
             else:
@@ -468,6 +469,38 @@ with tab_train:
             """,
             unsafe_allow_html=True,
         )
+    elif "active_run_id" in st.session_state:
+        # A run is in flight. Hiding the form (rather than just disabling the button)
+        # is what actually prevents a duplicate submission from launching a second,
+        # competing training job on the same machine.
+        run_id = st.session_state["active_run_id"]
+        try:
+            poll = requests.get(f"{API_URL}/training/{run_id}", timeout=10)
+            poll_data = poll.json()
+        except requests.exceptions.RequestException:
+            poll_data = {"status": "running"}
+
+        status = poll_data.get("status", "running")
+        if status == "completed":
+            st.session_state["run"] = poll_data
+            del st.session_state["active_run_id"]
+            st.toast("Training complete")
+            st.rerun()
+        elif status == "failed":
+            del st.session_state["active_run_id"]
+            st.error(poll_data.get("error_message") or "Training failed")
+        else:
+            st.markdown('<div class="card">', unsafe_allow_html=True)
+            st.markdown('<div class="subhead">Training in progress</div>', unsafe_allow_html=True)
+            st.markdown(
+                f'<div class="subcaption">Status: {status}. Four models are being trained and '
+                "hyperparameter-tuned — this can take a few minutes depending on dataset size. "
+                "You can switch tabs freely; this will keep tracking progress.</div>",
+                unsafe_allow_html=True,
+            )
+            st.markdown("</div>", unsafe_allow_html=True)
+            time.sleep(2)
+            st.rerun()
     else:
         ds = st.session_state["dataset"]
         columns = list(ds["column_summary"].keys())
@@ -510,20 +543,8 @@ with tab_train:
                 json={"dataset_id": ds["id"], "target_column": target_column, "task_type": task_type},
             )
             if resp.ok:
-                run_id = resp.json()["id"]
-                status = "pending"
-                with st.spinner("Training and tuning models... this can take a minute"):
-                    while status in ("pending", "running"):
-                        time.sleep(2)
-                        poll = requests.get(f"{API_URL}/training/{run_id}", timeout=10)
-                        poll_data = poll.json()
-                        status = poll_data["status"]
-                if status == "completed":
-                    st.session_state["run"] = poll_data
-                    st.toast("Training complete")
-                    st.success(f"Best model: {model_display_name(poll_data['best_model_name'])}")
-                else:
-                    st.error(poll_data.get("error_message") or "Training failed")
+                st.session_state["active_run_id"] = resp.json()["id"]
+                st.rerun()
             else:
                 st.error(resp.text)
         st.markdown("</div>", unsafe_allow_html=True)
