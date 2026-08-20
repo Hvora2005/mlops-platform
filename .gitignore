@@ -12,3 +12,6 @@ mlruns/*
 *.log
 *.db
 backend/mlruns_local/
+backend/mlruns_manual/
+backend/data/
+
