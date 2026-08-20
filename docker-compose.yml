@@ -32,6 +32,7 @@ services:
       DATABASE_URL: postgresql://mlops:mlops@db:5432/mlops
       MLFLOW_TRACKING_URI: http://mlflow:5000
       UPLOAD_DIR: /app/data/uploads
+      API_KEY: ${API_KEY:-changeme}
     ports:
       - "8000:8000"
     volumes:
@@ -46,6 +47,7 @@ services:
       dockerfile: docker/frontend.Dockerfile
     environment:
       API_URL: http://api:8000
+      API_KEY: ${API_KEY:-changeme}
     ports:
       - "8501:8501"
     depends_on:

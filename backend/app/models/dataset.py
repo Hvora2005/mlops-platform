@@ -32,4 +32,6 @@ class TrainingRun(Base):
     best_model_uri = Column(String, nullable=True)
     feature_columns = Column(JSON, nullable=True)
     metrics = Column(JSON, nullable=True)
+    feature_importance = Column(JSON, nullable=True)
+    error_message = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)

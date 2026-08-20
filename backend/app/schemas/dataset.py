@@ -42,6 +42,8 @@ class TrainingRunOut(BaseModel):
     best_model_name: str | None
     feature_columns: list[str] | None
     metrics: dict | None
+    feature_importance: dict | None
+    error_message: str | None
 
     class Config:
         from_attributes = True

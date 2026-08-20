@@ -87,7 +87,12 @@ def train_and_compare(df: pd.DataFrame, target_column: str, task_type: str, tune
                 "r2": r2_score(y_test, preds),
             }
 
-        results[name] = {"pipeline": pipeline, "metrics": metrics, "best_params": best_params}
+        results[name] = {
+            "pipeline": pipeline,
+            "metrics": metrics,
+            "best_params": best_params,
+            "feature_importance": _extract_feature_importance(pipeline),
+        }
 
     ranking_key = "f1" if task_type == "classification" else "r2"
     best_name = max(results, key=lambda n: results[n]["metrics"][ranking_key])
@@ -100,3 +105,24 @@ def _grid_size(grid: dict) -> int:
     for values in grid.values():
         size *= len(values)
     return size
+
+
+def _extract_feature_importance(pipeline: Pipeline, top_n: int = 20) -> dict | None:
+    model = pipeline.named_steps["model"]
+    preprocessor = pipeline.named_steps["preprocessor"]
+
+    try:
+        feature_names = preprocessor.get_feature_names_out()
+    except Exception:
+        return None
+
+    if hasattr(model, "feature_importances_"):
+        values = model.feature_importances_
+    elif hasattr(model, "coef_"):
+        coef = model.coef_
+        values = abs(coef[0]) if coef.ndim > 1 else abs(coef)
+    else:
+        return None
+
+    ranked = sorted(zip(feature_names, values.tolist()), key=lambda pair: -pair[1])
+    return dict(ranked[:top_n])
